@@ -9,6 +9,10 @@ Nyx supports two interfaces with equivalent functionality:
 - CLI usage and command reference: [doc/cli.md](doc/cli.md)
 - HTTP API usage and endpoint reference: [doc/http.md](doc/http.md)
 
+## Repository File Format
+
+Nyx stores each repository in a single encrypted local file. The file format specification, cryptographic structure, and validation rules are defined in [doc/repository_format.md](doc/repository_format.md).
+
 ## Data model
 
 A repository is an encrypted container that stores a collection of secrets. The master password is entered by the user to unlock the repository; the repository never stores the password itself, but does store password-derived cryptographic metadata needed to verify and decrypt the data.
