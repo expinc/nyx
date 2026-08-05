@@ -189,6 +189,11 @@ Default behavior masks secured fields.
 
 Update secret metadata or type-specific fields.
 
+Constraints:
+
+- `id` and `createdAt` cannot be updated by user commands
+- `updatedAt` is managed by Nyx and updated automatically
+
 Update title/notes:
 
 ```bash

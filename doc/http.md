@@ -258,6 +258,11 @@ Response `200 OK`:
 
 `PATCH /v1/repos/{repoName}/secrets/sec_01JABCDEF123`
 
+Constraints:
+
+- updating on `id` or `createdAt` has no effect
+- `updatedAt` is set by Nyx automatically and cannot be set by client
+
 Update title/notes:
 
 ```json
