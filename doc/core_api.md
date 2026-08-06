@@ -243,7 +243,7 @@ Patch rules:
 - partial update allowed
 - type cannot be changed in v1
 - title uniqueness must remain true
-- user cannot update `id` or `createdAt`
+- updating `id` or `createdAt` by user has no effect
 - user cannot directly update `updatedAt`; it is program-managed
 
 #### Delete Secret

@@ -165,6 +165,6 @@ Guidelines:
 
 - [doc/core_api.md](core_api.md)
 - [doc/repository_format.md](repository_format.md)
-- [doc/session_storage.md](session_storage.md)
+- [doc/session_management.md](session_management.md)
 - [doc/cli.md](cli.md)
 - [doc/http.md](http.md)
