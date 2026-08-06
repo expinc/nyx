@@ -53,7 +53,8 @@ Authorization: Bearer <sessionToken>
 Notes:
 
 - Sessions are short-lived local sessions.
-- Locking a repository invalidates its session token.
+- Locking a repository invalidates only the current session token.
+- Other active HTTP sessions on the same repository remain valid.
 - If token is missing/expired, APIs return authentication error.
 
 ## Repository Lifecycle

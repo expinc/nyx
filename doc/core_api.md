@@ -115,8 +115,9 @@ SessionToken: string
 ```
 
 - required for all operations except create and unlock
-- session is repository-scoped
-- lock invalidates session
+- HTTP session is token-scoped and repository-scoped
+- multiple HTTP sessions may exist for the same repository
+- CLI uses repository-scoped local session state
 
 ## Operation Contract
 
@@ -161,7 +162,8 @@ lockRepository({ repoName }, { sessionToken })
 
 Behavior:
 
-- invalidates active session for repoName
+- CLI mode: invalidates CLI session for repoName
+- HTTP mode: invalidates only the current token session for repoName
 
 #### Get Repository Status
 
