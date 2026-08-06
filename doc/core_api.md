@@ -1,6 +1,25 @@
 # Nyx Core API Contract (v1)
 
-## 1. Purpose
+- [Purpose](#purpose)
+- [Design Principles](#design-principles)
+- [Scope (v1)](#scope-v1)
+- [Core Types](#core-types)
+  - [Repository Identifier](#repository-identifier)
+  - [Secret Type](#secret-type)
+  - [Secret Record](#secret-record)
+  - [Session Context](#session-context)
+- [Operation Contract](#operation-contract)
+  - [Repository Operations](#repository-operations)
+  - [Secret Operations](#secret-operations)
+- [Output Shapes](#output-shapes)
+  - [SecretSummary](#secretsummary)
+  - [SecretRecord Masking Rule](#secretrecord-masking-rule)
+- [Error Model](#error-model)
+- [Adapter Mapping](#adapter-mapping)
+- [Invariants and Security Constraints](#invariants-and-security-constraints)
+- [Compatibility](#compatibility)
+
+## Purpose
 
 This document defines the internal core API used by both Nyx interfaces:
 
@@ -9,14 +28,14 @@ This document defines the internal core API used by both Nyx interfaces:
 
 The core API owns business logic, validation, cryptographic repository access, and consistent error semantics.
 
-## 2. Design Principles
+## Design Principles
 
 - Single source of truth: CLI and HTTP must call the same core operations.
 - Security first: never expose plaintext master password or key material in logs/errors.
 - Fail closed: malformed data and unsupported versions are hard errors.
 - Stable behavior: same input state leads to same result independent of interface.
 
-## 3. Scope (v1)
+## Scope (v1)
 
 Repository lifecycle:
 
@@ -37,9 +56,9 @@ Secret lifecycle:
 - update
 - delete
 
-## 4. Core Types
+## Core Types
 
-### 4.1 Repository Identifier
+### Repository Identifier
 
 The core uses a repository identity independent of transport:
 
@@ -57,13 +76,13 @@ Note:
 
 - CLI may still accept filesystem input options, but adapter resolves them to a RepositoryName before calling core.
 
-### 4.2 Secret Type
+### Secret Type
 
 ```text
 SecretType = "password" | "certificate" | "information"
 ```
 
-### 4.3 Secret Record
+### Secret Record
 
 ```json
 {
@@ -89,7 +108,7 @@ Common rules:
 - title must be unique in repository
 - timestamps are UTC ISO 8601
 
-### 4.4 Session Context
+### Session Context
 
 ```text
 SessionToken: string
@@ -99,7 +118,7 @@ SessionToken: string
 - session is repository-scoped
 - lock invalidates session
 
-## 5. Operation Contract
+## Operation Contract
 
 Pseudo signature format:
 
@@ -107,9 +126,9 @@ Pseudo signature format:
 Operation(Input, Context) -> Result | CoreError
 ```
 
-### 5.1 Repository Operations
+### Repository Operations
 
-#### createRepository
+#### Create Repository
 
 ```text
 createRepository({ repoName, masterPassword })
@@ -121,7 +140,7 @@ Behavior:
 - creates new encrypted repository file using repository format spec
 - fails if repoName already exists
 
-#### unlockRepository
+#### Unlock Repository
 
 ```text
 unlockRepository({ repoName, masterPassword })
@@ -133,7 +152,7 @@ Behavior:
 - validates password against repository metadata
 - creates short-lived local session
 
-#### lockRepository
+#### Lock Repository
 
 ```text
 lockRepository({ repoName }, { sessionToken })
@@ -144,14 +163,14 @@ Behavior:
 
 - invalidates active session for repoName
 
-#### getRepositoryStatus
+#### Get Repository Status
 
 ```text
 getRepositoryStatus({ repoName }, { sessionToken })
   -> { repoName, locked, secretCount, updatedAt }
 ```
 
-#### changeRepositoryPassword
+#### Change Repository Password
 
 ```text
 changeRepositoryPassword({ repoName, currentPassword, newPassword }, { sessionToken })
@@ -162,30 +181,30 @@ Behavior:
 
 - re-wraps DEK with new KEK according to repository format spec
 
-#### deleteRepository
+#### Delete Repository
 
 ```text
 deleteRepository({ repoName }, { sessionToken })
   -> {}
 ```
 
-### 5.2 Secret Operations
+### Secret Operations
 
-#### addSecret
+#### Add Secret
 
 ```text
 addSecret({ repoName, type, title, notes?, typeFields... }, { sessionToken })
   -> SecretSummary
 ```
 
-#### listSecrets
+#### List Secrets
 
 ```text
 listSecrets({ repoName }, { sessionToken })
   -> { items: SecretSummary[] }
 ```
 
-#### searchSecretsByTitle
+#### Search Secrets By Title
 
 ```text
 searchSecretsByTitle({ repoName, titleQuery }, { sessionToken })
@@ -196,21 +215,21 @@ Matching rule (v1):
 
 - case-insensitive substring match
 
-#### getSecretById
+#### Get Secret By ID
 
 ```text
 getSecretById({ repoName, secretId, maskSecuredFields = true }, { sessionToken })
   -> SecretRecord
 ```
 
-#### getSecretByTitle
+#### Get Secret By Title
 
 ```text
 getSecretByTitle({ repoName, title, maskSecuredFields = true }, { sessionToken })
   -> SecretRecord
 ```
 
-#### updateSecret
+#### Update Secret
 
 ```text
 updateSecret({ repoName, secretId, patch }, { sessionToken })
@@ -225,16 +244,16 @@ Patch rules:
 - user cannot update `id` or `createdAt`
 - user cannot directly update `updatedAt`; it is program-managed
 
-#### deleteSecret
+#### Delete Secret
 
 ```text
 deleteSecret({ repoName, secretId }, { sessionToken })
   -> {}
 ```
 
-## 6. Output Shapes
+## Output Shapes
 
-### 6.1 SecretSummary
+### SecretSummary
 
 ```json
 {
@@ -246,14 +265,14 @@ deleteSecret({ repoName, secretId }, { sessionToken })
 }
 ```
 
-### 6.2 SecretRecord Masking Rule
+### SecretRecord Masking Rule
 
 In v1, only `password` field in `password` type is secured.
 
 - if maskSecuredFields=true: password value is masked (for example `********`)
 - if maskSecuredFields=false: password value is returned as stored plaintext in decrypted memory context
 
-## 7. Error Model
+## Error Model
 
 All core operations return a structured error on failure:
 
@@ -287,9 +306,9 @@ Requirements:
 - messages are safe for users
 - details never include plaintext secrets, passwords, or key bytes
 
-## 8. Adapter Mapping
+## Adapter Mapping
 
-### 8.1 CLI to Core
+### CLI to Core
 
 Examples:
 
@@ -305,7 +324,7 @@ CLI adapter responsibilities:
 - map CLI flags into core input object
 - map CoreError to CLI exit codes
 
-### 8.2 HTTP to Core
+### HTTP to Core
 
 Examples:
 
@@ -320,7 +339,7 @@ HTTP adapter responsibilities:
 - pass bearer token as sessionToken context
 - map CoreError to HTTP status + error body
 
-## 9. Invariants and Security Constraints
+## Invariants and Security Constraints
 
 - core never stores masterPassword after operation completes
 - repository writes are atomic
@@ -328,7 +347,7 @@ HTTP adapter responsibilities:
 - decrypt/search happens in memory only
 - no plaintext secret fields in logs
 
-## 10. Compatibility
+## Compatibility
 
 - this contract is v1 and additive-first
 - breaking changes require version bump and migration notes
