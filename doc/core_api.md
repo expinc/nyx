@@ -72,9 +72,26 @@ Rules:
 - case-sensitive in v1
 - validated by adapter and core
 
+Canonical repository name rule (v1):
+
+- Repository identity is based on file name only; parent path is not part of identity.
+- For file-based input, take the base file name and then take the substring before the first `.`.
+- If no `.` exists in the base file name, use the full base file name.
+- Examples:
+  - `/myparentfolder/myrepo.json` -> `myrepo`
+  - `myrepo.xx.yy` -> `myrepo`
+  - `myrepo` -> `myrepo`
+
+Validation and collision rules:
+
+- Derived or provided `repoName` must not be empty.
+- `repoName` must not contain path separators.
+- Names are unique by canonical `repoName`; two different file paths that derive the same name refer to the same repository identity.
+
 Note:
 
-- CLI may still accept filesystem input options, but adapter resolves them to a RepositoryName before calling core.
+- CLI may still accept filesystem input options, but adapter resolves them to canonical `repoName` before calling core.
+- HTTP accepts canonical `repoName` directly.
 
 ### Secret Type
 
@@ -339,7 +356,7 @@ HTTP adapter responsibilities:
 
 - parse/validate transport JSON
 - pass bearer token as sessionToken context
-- map CoreError to HTTP status + error body
+- map CoreError to HTTP status + error body as defined in [the HTTP API documentation](http.md)
 
 ## Invariants and Security Constraints
 

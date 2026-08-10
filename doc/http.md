@@ -19,6 +19,7 @@ This document describes how to use Nyx through its HTTP interface.
     - [Update Secret](#update-secret)
     - [Remove Secret](#remove-secret)
 - [Error Format](#error-format)
+	- [Status Mapping](#status-mapping)
 
 ## Base URL and Conventions
 
@@ -33,8 +34,10 @@ HTTPS may be enabled depending on server configuration.
 Common conventions:
 
 - Request and response bodies are JSON (`application/json`).
-- Repository is identified by `repoName`.
+- Repository is identified by canonical `repoName`.
 - Timestamps use UTC ISO 8601 format.
+
+Repository identity and canonical `repoName` derivation rules are defined in [the core API documentation](core_api.md).
 
 ## Authentication and Session
 
@@ -314,8 +317,37 @@ Error response body:
 ```json
 {
 	"error": {
+		"code": "AUTH_FAILED",
 		"message": "Error message",
 		"details": {}
 	}
 }
 ```
+
+Rules:
+
+- error.code is required and must match Nyx core error codes.
+- error.message is human-readable.
+- error.details is optional structured context and must not contain sensitive material.
+
+### Status Mapping
+
+This section is the canonical mapping for Nyx HTTP adapters.
+
+| Core error code | HTTP status |
+| --- | --- |
+| INVALID_ARGUMENT | 400 Bad Request |
+| VALIDATION_ERROR | 400 Bad Request |
+| AUTH_FAILED | 401 Unauthorized |
+| SESSION_EXPIRED | 401 Unauthorized |
+| REPO_LOCKED | 423 Locked |
+| REPO_ALREADY_EXISTS | 409 Conflict |
+| REPO_NOT_FOUND | 404 Not Found |
+| SECRET_NOT_FOUND | 404 Not Found |
+| TITLE_CONFLICT | 409 Conflict |
+| FORMAT_UNSUPPORTED | 422 Unprocessable Entity |
+| CRYPTO_ERROR | 500 Internal Server Error |
+| IO_ERROR | 500 Internal Server Error |
+| INTERNAL_ERROR | 500 Internal Server Error |
+
+HTTP adapters must follow this mapping exactly. If an implementation encounters an unmapped internal failure, it must return `500 Internal Server Error` with `error.code` set to `INTERNAL_ERROR`.

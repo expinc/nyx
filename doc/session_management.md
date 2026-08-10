@@ -62,7 +62,7 @@ Permission guidance:
 
 ## 5. Session Identity Model
 
-- Repository identity is based on exact `repoName` string (case-sensitive in v1).
+- Repository identity uses `repoName` as defined in [the core API documentation](core_api.md).
 - Session storage is mode-specific.
 
 Mode-specific identity model:
@@ -75,7 +75,7 @@ File naming:
 - CLI: `cli/<repoNameHash>.session.json`
 - HTTP: `http/<repoNameHash>/<sessionId>.session.json`
 
-Where `repoNameHash` is SHA-256 hex of canonical repo name bytes.
+Where `repoNameHash` is SHA-256 hex of canonical `repoName` bytes.
 
 ## 6. Session Record Schema (v1)
 

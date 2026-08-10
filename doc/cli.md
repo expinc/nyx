@@ -39,6 +39,8 @@ Global options:
 - `--yes`: skip interactive confirmation for destructive commands
 - `--help`: show help for any command
 
+Repository identity and `repoName` derivation rules are defined in [the core API documentation](core_api.md).
+
 ## Repository Lifecycle
 
 ### Create
@@ -87,7 +89,7 @@ nyx repo status --repo ./vault.nyx
 
 Typical output includes:
 
-- repository path
+- repository name
 - locked/unlocked state
 - secret count
 - last updated timestamp
