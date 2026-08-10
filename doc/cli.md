@@ -193,7 +193,7 @@ Update secret metadata or type-specific fields.
 
 Constraints:
 
-- `id` and `createdAt` cannot be updated by user commands
+- `id` and `createdAt` cannot be updated by user commands. Attempts to update them are ignored.
 - `updatedAt` is managed by Nyx and updated automatically
 
 Update title/notes:

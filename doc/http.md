@@ -121,7 +121,6 @@ Response `200 OK`:
 ```json
 {
 	"repoName": "personal",
-	"locked": false,
 	"secretCount": 3,
 	"updatedAt": "2026-07-20T10:05:00Z"
 }
