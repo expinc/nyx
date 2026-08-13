@@ -30,6 +30,7 @@ This document defines the Go package architecture for Nyx, with emphasis on pack
 - internal/store: local repository file persistence and atomic update handling.
 - internal/crypto: password-based key derivation and encryption/decryption operations.
 - internal/session: local unlock session management.
+- internal/common: small shared internal types used by multiple packages.
 - internal/cli: CLI commands and output mapping.
 - internal/http: HTTP handlers and response mapping.
 - doc: project specifications and references.
@@ -77,6 +78,14 @@ Responsibilities:
 - Create, validate, and revoke local unlock sessions.
 - Enforce session expiration rules.
 
+### internal/common
+
+Responsibilities:
+
+- Provide minimal shared internal primitives (for example structured error type).
+- Stay dependency-free and policy-free.
+- Do not own package-specific error codes or transport mapping rules.
+
 ### internal/cli
 
 Responsibilities:
@@ -104,24 +113,35 @@ flowchart TD
 	H --> E[internal/store]
 	H --> F[internal/crypto]
 	H --> G[internal/session]
+	H --> I[internal/common]
 
 	B --> D
 	C --> D
 	D --> E
 	D --> F
 	D --> G
+	B --> I
+	C --> I
+	D --> I
+	E --> I
+	F --> I
+	G --> I
 ```
 
 Allowed imports:
 
 - cmd/nyx -> internal/app
-- internal/app -> internal/core, internal/store, internal/crypto, internal/session, internal/cli, internal/http
+- internal/app -> internal/core, internal/store, internal/crypto, internal/session, internal/common, internal/cli, internal/http
 - internal/cli -> internal/core
 - internal/http -> internal/core
-- internal/core -> internal/store, internal/crypto, internal/session
+- internal/core -> internal/store, internal/crypto, internal/session, internal/common
+- internal/store -> internal/common (optional)
+- internal/crypto -> internal/common (optional)
+- internal/session -> internal/common (optional)
 - internal/store -> no dependencies on internal/cli or internal/http
 - internal/crypto -> no dependencies on internal/cli or internal/http
 - internal/session -> no dependencies on internal/cli or internal/http
+- internal/common -> no dependencies on internal/* packages
 
 Forbidden imports:
 
