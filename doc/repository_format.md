@@ -78,12 +78,12 @@ Top-level schema (v1):
     "saltB64": "..."
   },
   "keyWrap": {
-    "alg": "xchacha20poly1305",
+    "algorithm": "xchacha20poly1305",
     "nonceB64": "...",
     "ciphertextB64": "..."
   },
   "payload": {
-    "alg": "xchacha20poly1305",
+    "algorithm": "xchacha20poly1305",
     "nonceB64": "...",
     "ciphertextB64": "..."
   }
@@ -102,8 +102,8 @@ AAD is used to bind cryptographic metadata and prevent undetected metadata tampe
 
 v1 AAD strings:
 
-- For DEK wrap: canonical JSON of `{format, version, kdf, keyWrap.alg}`
-- For payload encryption: canonical JSON of `{format, version, kdf, payload.alg}`
+- For DEK wrap: canonical JSON of `{format, version, kdf, keyWrap.algorithm}`
+- For payload encryption: canonical JSON of `{format, version, kdf, payload.algorithm}`
 
 Canonical JSON means deterministic key ordering and UTF-8 bytes.
 
