@@ -34,7 +34,7 @@ Nyx v1 threat boundary: protects against offline file theft and tampering, but n
 Required algorithms:
 
 - KDF: Argon2id
-- AEAD for key wrapping and payload encryption: XChaCha20-Poly1305
+- AEAD (Authenticated Encryption with Associated Data) for key wrapping and payload encryption: XChaCha20-Poly1305
 - RNG: cryptographically secure OS RNG
 
 Default KDF parameters (v1 baseline):
