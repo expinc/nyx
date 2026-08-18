@@ -2,7 +2,7 @@ package crypto
 
 // KDFParams defines password-based key derivation inputs.
 type KDFParams struct {
-	Name        string
+	Algorithm   string
 	MemoryKiB   uint32
 	Iterations  uint32
 	Parallelism uint8

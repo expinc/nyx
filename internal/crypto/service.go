@@ -3,6 +3,7 @@ package crypto
 // Service defines cryptographic operations used by core/store flows.
 type Service interface {
 	RandomBytes(size int) ([]byte, error)
+	GenerateSalt() ([]byte, error)
 	GenerateDEK() ([]byte, error)
 	GenerateNonce() ([]byte, error)
 
@@ -10,4 +11,8 @@ type Service interface {
 
 	Encrypt(in AEADEncryptInput) ([]byte, error)
 	Decrypt(in AEADDecryptInput) ([]byte, error)
+}
+
+func NewService() Service {
+	return &service{}
 }

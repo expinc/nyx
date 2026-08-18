@@ -71,7 +71,7 @@ Top-level schema (v1):
   "format": "nyx-repo",
   "version": 1,
   "kdf": {
-    "name": "argon2id",
+    "algorithm": "argon2id",
     "memoryKiB": 65536,
     "iterations": 3,
     "parallelism": 1,
