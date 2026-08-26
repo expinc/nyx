@@ -23,7 +23,7 @@ func (s *service) RandomBytes(size int) ([]byte, error) {
 }
 
 func (s *service) GenerateSalt() ([]byte, error) {
-	return s.RandomBytes(MinSaltBytes)
+	return s.RandomBytes(DefaultSaltBytes)
 }
 
 func (s *service) GenerateDEK() ([]byte, error) {

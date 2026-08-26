@@ -16,4 +16,5 @@ const (
 	DEKSizeBytes        = 32
 	XChaCha20NonceBytes = 24
 	MinSaltBytes        = 16
+	DefaultSaltBytes    = 16
 )
