@@ -29,6 +29,7 @@ This document defines the Go package architecture for Nyx, with emphasis on pack
 - internal/core: shared business logic and rules used by both CLI and HTTP.
 - internal/store: local repository file persistence and atomic update handling.
 - internal/crypto: password-based key derivation and encryption/decryption operations.
+- internal/model: shared data models.
 - internal/session: local unlock session management.
 - internal/common: small shared internal types used by multiple packages.
 - internal/cli: CLI commands and output mapping.
@@ -54,6 +55,7 @@ Responsibilities:
 - Implement repository and secret lifecycle behaviors from [doc/core_api.md](core_api.md).
 - Enforce business and security rules (for example immutable fields and masking behavior).
 - Define operation-level error semantics for adapters.
+- Orchestrate transforms between encrypted repository model and plain repository model.
 
 ### internal/store
 
@@ -62,6 +64,17 @@ Responsibilities:
 - Load/save/delete repository files.
 - Enforce atomic write behavior and file permission expectations.
 - Handle repository-name to file-location mapping.
+- Own repository JSON and base64 mapping for on-disk format.
+- Convert between on-disk envelope DTOs and internal/model raw-byte models.
+
+### internal/model
+
+Responsibilities:
+
+- Define encrypted repository container model in raw bytes.
+- Define decrypted repository content model for business operations.
+- Keep models independent from JSON/base64/file transport details.
+- Provide model-level structural and value validation/defaults.
 
 ### internal/crypto
 
@@ -114,12 +127,15 @@ flowchart TD
 	H --> F[internal/crypto]
 	H --> G[internal/session]
 	H --> I[internal/common]
+	H --> J[internal/model]
 
 	B --> D
 	C --> D
 	D --> E
 	D --> F
 	D --> G
+	D --> J
+	E --> J
 	B --> I
 	C --> I
 	D --> I
@@ -131,17 +147,19 @@ flowchart TD
 Allowed imports:
 
 - cmd/nyx -> internal/app
-- internal/app -> internal/core, internal/store, internal/crypto, internal/session, internal/common, internal/cli, internal/http
+- internal/app -> internal/core, internal/store, internal/crypto, internal/session, internal/common, internal/model, internal/cli, internal/http
 - internal/cli -> internal/core
 - internal/http -> internal/core
-- internal/core -> internal/store, internal/crypto, internal/session, internal/common
+- internal/core -> internal/store, internal/crypto, internal/session, internal/model, internal/common
 - internal/store -> internal/common (optional)
+- internal/store -> internal/model
 - internal/crypto -> internal/common (optional)
 - internal/session -> internal/common (optional)
 - internal/store -> no dependencies on internal/cli or internal/http
 - internal/crypto -> no dependencies on internal/cli or internal/http
 - internal/session -> no dependencies on internal/cli or internal/http
 - internal/common -> no dependencies on internal/* packages
+- internal/model -> no dependencies on internal/* packages
 
 Forbidden imports:
 
@@ -155,6 +173,8 @@ Forbidden imports:
 - internal/crypto -> internal/core
 - internal/session -> internal/app
 - internal/session -> internal/core
+- internal/model -> internal/store
+- internal/model -> internal/core
 
 ## Composition Root
 
@@ -164,6 +184,7 @@ Responsibilities:
 
 - Build concrete infrastructure implementations.
 - Construct core service with store, crypto, and session dependencies.
+- Wire shared model packages where needed.
 - Build CLI mode runner and HTTP mode runner.
 - Provide common config (data dir, session TTL, bind address).
 
@@ -180,6 +201,7 @@ Guidelines:
 - Avoid logging secret plaintext, master passwords, DEK/KEK, or raw ciphertext internals.
 - Keep crypto decisions in one place, not scattered across adapters.
 - Keep repository-format read/write logic centralized.
+- Keep encrypted and plain repository models separate by package and lifecycle state.
 
 ## References
 
