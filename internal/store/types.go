@@ -28,3 +28,21 @@ type payloadEnvelope struct {
 	NonceB64      string `json:"nonceB64"`
 	CiphertextB64 string `json:"ciphertextB64"`
 }
+
+type algorithmEnvelope struct {
+	Algorithm string `json:"algorithm"`
+}
+
+type keyWrapAADEnvelope struct {
+	Format  string            `json:"format"`
+	Version int               `json:"version"`
+	KDF     kdfEnvelope       `json:"kdf"`
+	KeyWrap algorithmEnvelope `json:"keyWrap"`
+}
+
+type payloadAADEnvelope struct {
+	Format  string            `json:"format"`
+	Version int               `json:"version"`
+	KDF     kdfEnvelope       `json:"kdf"`
+	Payload algorithmEnvelope `json:"payload"`
+}
