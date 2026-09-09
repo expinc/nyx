@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"nyx/internal/common/cryptoprofile"
 	"nyx/internal/model/repoenc"
 )
 
 const (
-	xChaCha20NonceSize = 24
-	minSaltSize        = 16
+	supportedRepoVersion = 1
 )
 
 // ParseRepositoryJSON parses repository JSON and returns the raw-byte encrypted model.
@@ -106,38 +106,54 @@ func repositoryToEnvelope(repo repoenc.Repository) (repositoryEnvelope, error) {
 }
 
 func envelopeToRepository(env repositoryEnvelope) (repoenc.Repository, error) {
+	if err := validateEnvelopeStructure(env); err != nil {
+		return repoenc.Repository{}, err
+	}
+
 	salt, err := decodeB64Field(env.KDF.SaltB64)
 	if err != nil {
 		return repoenc.Repository{}, NewInvalidFormatError("invalid base64 in kdf.saltB64", err)
 	}
-	if len(salt) < minSaltSize {
-		return repoenc.Repository{}, NewInvalidFormatError(fmt.Sprintf("kdf.saltB64 must decode to at least %d bytes", minSaltSize), nil)
+	if len(salt) < cryptoprofile.MinSaltBytes {
+		return repoenc.Repository{}, NewInvalidFormatError(fmt.Sprintf("kdf.saltB64 must decode to at least %d bytes", cryptoprofile.MinSaltBytes), nil)
 	}
 
 	wrapNonce, err := decodeB64Field(env.KeyWrap.NonceB64)
 	if err != nil {
 		return repoenc.Repository{}, NewInvalidFormatError("invalid base64 in keyWrap.nonceB64", err)
 	}
-	if len(wrapNonce) != xChaCha20NonceSize {
-		return repoenc.Repository{}, NewInvalidFormatError(fmt.Sprintf("keyWrap.nonceB64 must decode to %d bytes", xChaCha20NonceSize), nil)
+	if len(wrapNonce) != cryptoprofile.XChaCha20NonceBytes {
+		return repoenc.Repository{}, NewInvalidFormatError(fmt.Sprintf("keyWrap.nonceB64 must decode to %d bytes", cryptoprofile.XChaCha20NonceBytes), nil)
 	}
 
 	wrapCiphertext, err := decodeB64Field(env.KeyWrap.CiphertextB64)
 	if err != nil {
 		return repoenc.Repository{}, NewInvalidFormatError("invalid base64 in keyWrap.ciphertextB64", err)
 	}
+	if len(wrapCiphertext) != cryptoprofile.DEKSizeBytes+cryptoprofile.AEADTagSizeBytes {
+		return repoenc.Repository{}, NewInvalidFormatError(
+			fmt.Sprintf("keyWrap.ciphertextB64 must decode to %d bytes", cryptoprofile.DEKSizeBytes+cryptoprofile.AEADTagSizeBytes),
+			nil,
+		)
+	}
 
 	payloadNonce, err := decodeB64Field(env.Payload.NonceB64)
 	if err != nil {
 		return repoenc.Repository{}, NewInvalidFormatError("invalid base64 in payload.nonceB64", err)
 	}
-	if len(payloadNonce) != xChaCha20NonceSize {
-		return repoenc.Repository{}, NewInvalidFormatError(fmt.Sprintf("payload.nonceB64 must decode to %d bytes", xChaCha20NonceSize), nil)
+	if len(payloadNonce) != cryptoprofile.XChaCha20NonceBytes {
+		return repoenc.Repository{}, NewInvalidFormatError(fmt.Sprintf("payload.nonceB64 must decode to %d bytes", cryptoprofile.XChaCha20NonceBytes), nil)
 	}
 
 	payloadCiphertext, err := decodeB64Field(env.Payload.CiphertextB64)
 	if err != nil {
 		return repoenc.Repository{}, NewInvalidFormatError("invalid base64 in payload.ciphertextB64", err)
+	}
+	if len(payloadCiphertext) < cryptoprofile.AEADTagSizeBytes {
+		return repoenc.Repository{}, NewInvalidFormatError(
+			fmt.Sprintf("payload.ciphertextB64 must decode to at least %d bytes", cryptoprofile.AEADTagSizeBytes),
+			nil,
+		)
 	}
 
 	repo := repoenc.Repository{
@@ -177,4 +193,48 @@ func decodeB64Field(raw string) ([]byte, error) {
 		return nil, fmt.Errorf("decoded bytes must not be empty")
 	}
 	return decoded, nil
+}
+
+func validateEnvelopeStructure(env repositoryEnvelope) error {
+	if env.Format != repoenc.FormatNyxRepo {
+		return NewInvalidFormatError("format must be nyx-repo", nil)
+	}
+	if env.Version != supportedRepoVersion {
+		return NewInvalidFormatError("unsupported repository version", nil)
+	}
+
+	if env.KDF.Algorithm != repoenc.KDFAlgorithmArgon2id {
+		return NewInvalidFormatError("kdf.algorithm must be argon2id", nil)
+	}
+	if env.KeyWrap.Algorithm != repoenc.AEADAlgorithmXChaCha20P {
+		return NewInvalidFormatError("keyWrap.algorithm must be xchacha20poly1305", nil)
+	}
+	if env.Payload.Algorithm != repoenc.AEADAlgorithmXChaCha20P {
+		return NewInvalidFormatError("payload.algorithm must be xchacha20poly1305", nil)
+	}
+
+	if env.KDF.SaltB64 == "" {
+		return NewInvalidFormatError("kdf.saltB64 is required", nil)
+	}
+	if env.KeyWrap.NonceB64 == "" {
+		return NewInvalidFormatError("keyWrap.nonceB64 is required", nil)
+	}
+	if env.KeyWrap.CiphertextB64 == "" {
+		return NewInvalidFormatError("keyWrap.ciphertextB64 is required", nil)
+	}
+	if env.Payload.NonceB64 == "" {
+		return NewInvalidFormatError("payload.nonceB64 is required", nil)
+	}
+	if env.Payload.CiphertextB64 == "" {
+		return NewInvalidFormatError("payload.ciphertextB64 is required", nil)
+	}
+
+	if (env.KeyWrap.NonceB64 == "") != (env.KeyWrap.CiphertextB64 == "") {
+		return NewInvalidFormatError("keyWrap nonce/ciphertext must be present together", nil)
+	}
+	if (env.Payload.NonceB64 == "") != (env.Payload.CiphertextB64 == "") {
+		return NewInvalidFormatError("payload nonce/ciphertext must be present together", nil)
+	}
+
+	return nil
 }

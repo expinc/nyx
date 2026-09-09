@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"strings"
 	"testing"
-
-	"nyx/internal/model/repoenc"
 )
 
 func TestRenderParseRepositoryJSONRoundTrip(t *testing.T) {
@@ -69,6 +68,104 @@ func TestParseRepositoryJSONRejectsInvalidNonceSize(t *testing.T) {
 	}
 }
 
+func TestParseRepositoryJSONRejectsUnsupportedAlgorithms(t *testing.T) {
+	repo := sampleRepo()
+	env, err := repositoryToEnvelope(repo)
+	if err != nil {
+		t.Fatalf("repositoryToEnvelope failed: %v", err)
+	}
+
+	env.KeyWrap.Algorithm = "aes-gcm"
+	b, err := json.Marshal(env)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	_, err = ParseRepositoryJSON(b)
+	if err == nil {
+		t.Fatal("expected unsupported algorithm error")
+	}
+}
+
+func TestParseRepositoryJSONRejectsUnsupportedVersion(t *testing.T) {
+	repo := sampleRepo()
+	env, err := repositoryToEnvelope(repo)
+	if err != nil {
+		t.Fatalf("repositoryToEnvelope failed: %v", err)
+	}
+
+	env.Version = 2
+	b, err := json.Marshal(env)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	_, err = ParseRepositoryJSON(b)
+	if err == nil {
+		t.Fatal("expected unsupported version error")
+	}
+}
+
+func TestParseRepositoryJSONRejectsMissingRequiredField(t *testing.T) {
+	repo := sampleRepo()
+	env, err := repositoryToEnvelope(repo)
+	if err != nil {
+		t.Fatalf("repositoryToEnvelope failed: %v", err)
+	}
+
+	env.KDF.SaltB64 = ""
+	b, err := json.Marshal(env)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	_, err = ParseRepositoryJSON(b)
+	if err == nil {
+		t.Fatal("expected missing required field error")
+	}
+	if !strings.Contains(err.Error(), "kdf.saltB64 is required") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestParseRepositoryJSONRejectsInvalidKeyWrapCiphertextLength(t *testing.T) {
+	repo := sampleRepo()
+	env, err := repositoryToEnvelope(repo)
+	if err != nil {
+		t.Fatalf("repositoryToEnvelope failed: %v", err)
+	}
+
+	env.KeyWrap.CiphertextB64 = base64.StdEncoding.EncodeToString([]byte{1, 2, 3})
+	b, err := json.Marshal(env)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	_, err = ParseRepositoryJSON(b)
+	if err == nil {
+		t.Fatal("expected keyWrap ciphertext length error")
+	}
+}
+
+func TestParseRepositoryJSONRejectsTooShortPayloadCiphertext(t *testing.T) {
+	repo := sampleRepo()
+	env, err := repositoryToEnvelope(repo)
+	if err != nil {
+		t.Fatalf("repositoryToEnvelope failed: %v", err)
+	}
+
+	env.Payload.CiphertextB64 = base64.StdEncoding.EncodeToString([]byte{1, 2, 3})
+	b, err := json.Marshal(env)
+	if err != nil {
+		t.Fatalf("json.Marshal failed: %v", err)
+	}
+
+	_, err = ParseRepositoryJSON(b)
+	if err == nil {
+		t.Fatal("expected payload ciphertext length error")
+	}
+}
+
 func TestBuildAADDeterministicAndDistinct(t *testing.T) {
 	repo := sampleRepo()
 
@@ -98,29 +195,5 @@ func TestBuildAADDeterministicAndDistinct(t *testing.T) {
 
 	if bytes.Equal(keyWrapAAD1, payloadAAD1) {
 		t.Fatal("keyWrap and payload AAD must differ")
-	}
-}
-
-func sampleRepo() repoenc.Repository {
-	return repoenc.Repository{
-		Format:  repoenc.FormatNyxRepo,
-		Version: 1,
-		KDF: repoenc.KDF{
-			Algorithm:   repoenc.KDFAlgorithmArgon2id,
-			MemoryKiB:   65536,
-			Iterations:  3,
-			Parallelism: 1,
-			Salt:        bytes.Repeat([]byte{0x11}, 16),
-		},
-		KeyWrap: repoenc.AEAD{
-			Algorithm:  repoenc.AEADAlgorithmXChaCha20P,
-			Nonce:      bytes.Repeat([]byte{0x22}, 24),
-			Ciphertext: []byte{0x01, 0x02, 0x03, 0x04},
-		},
-		Payload: repoenc.AEAD{
-			Algorithm:  repoenc.AEADAlgorithmXChaCha20P,
-			Nonce:      bytes.Repeat([]byte{0x33}, 24),
-			Ciphertext: []byte{0x05, 0x06, 0x07, 0x08},
-		},
 	}
 }

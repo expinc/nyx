@@ -8,3 +8,7 @@ type Service interface {
 	Save(path string, repo repoenc.Repository) error
 	Exists(path string) (bool, error)
 }
+
+func NewService() Service {
+	return &service{}
+}

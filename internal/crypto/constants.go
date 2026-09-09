@@ -1,8 +1,10 @@
 package crypto
 
+import "nyx/internal/common/cryptoprofile"
+
 const (
-	AlgorithmArgon2id          = "argon2id"
-	AlgorithmXChaCha20Poly1305 = "xchacha20poly1305"
+	AlgorithmArgon2id          = cryptoprofile.AlgorithmArgon2id
+	AlgorithmXChaCha20Poly1305 = cryptoprofile.AlgorithmXChaCha20Poly1305
 )
 
 const (
@@ -13,8 +15,8 @@ const (
 )
 
 const (
-	DEKSizeBytes        = 32
-	XChaCha20NonceBytes = 24
-	MinSaltBytes        = 16
-	DefaultSaltBytes    = 16
+	DEKSizeBytes        = cryptoprofile.DEKSizeBytes
+	XChaCha20NonceBytes = cryptoprofile.XChaCha20NonceBytes
+	MinSaltBytes        = cryptoprofile.MinSaltBytes
+	DefaultSaltBytes    = cryptoprofile.MinSaltBytes
 )
