@@ -95,3 +95,27 @@ func TestServiceSaveReplacesExistingFile(t *testing.T) {
 		t.Fatalf("Load failed after replacing file: %v", err)
 	}
 }
+
+func TestServiceSaveCleansTempArtifactOnRenameFailure(t *testing.T) {
+	svc := NewService()
+	parentDir := t.TempDir()
+	targetDirPath := filepath.Join(parentDir, "repo-as-dir")
+
+	if err := os.Mkdir(targetDirPath, 0o755); err != nil {
+		t.Fatalf("failed to create target directory: %v", err)
+	}
+
+	err := svc.Save(targetDirPath, sampleRepo())
+	if err == nil {
+		t.Fatal("expected save failure when target path is a directory")
+	}
+
+	pattern := filepath.Join(parentDir, "."+filepath.Base(targetDirPath)+".tmp-*")
+	matches, globErr := filepath.Glob(pattern)
+	if globErr != nil {
+		t.Fatalf("glob failed: %v", globErr)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("expected no temp artifacts, found: %v", matches)
+	}
+}
