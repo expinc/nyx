@@ -7,8 +7,8 @@ type Service interface {
 	CreateCLISession(repoName string) (CreateSessionResult, error)
 	CreateHTTPSession(repoName string) (CreateSessionResult, error)
 
-	ValidateCLISession(repoName string) (ValidationResult, error)
-	ValidateHTTPSession(repoName, token string) (ValidationResult, error)
+	ValidateCLISession(repoName string) error
+	ValidateHTTPSession(repoName, token string) error
 
 	RevokeCLISession(repoName string) error
 	RevokeHTTPSession(repoName, sessionID, token string) error
@@ -20,5 +20,8 @@ type Service interface {
 type Config struct {
 	DataDir        string
 	SessionTTL     time.Duration
-	DisableCaching bool
+}
+
+func NewService(cfg Config) Service {
+	return &service{cfg: cfg, nowFn: time.Now}
 }

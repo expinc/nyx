@@ -28,11 +28,3 @@ type CreateSessionResult struct {
 	CreatedAt time.Time
 	ExpiresAt time.Time
 }
-
-type ValidationResult struct {
-	Mode      string
-	RepoName  string
-	SessionID string
-	ExpiresAt time.Time
-	Valid     bool
-}

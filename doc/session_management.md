@@ -21,7 +21,7 @@ Out of scope:
 - CLI commands run as independent processes; session state must be persisted locally.
 - No daemon is used.
 - No OS-specific secure storage (for example Keychain) is required.
-- Session persistence is short-lived local caching with explicit security tradeoff.
+- Session persistence uses short-lived local session state with explicit security tradeoff.
 - HTTP supports multiple active sessions on the same repository.
 - CLI keeps a single active session per repository.
 - Concurrent session coordination between CLI and HTTP for the same repository is out of scope in v1.
@@ -178,7 +178,6 @@ Recommended defaults:
 Configurable settings:
 
 - session TTL duration
-- optional disable session caching mode
 
 ## 11. Explicit Tradeoffs
 
