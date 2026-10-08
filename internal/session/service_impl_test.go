@@ -167,12 +167,9 @@ func TestServiceCleanupRemovesMalformedAndExpired(t *testing.T) {
 	}
 
 	svc.nowFn = func() time.Time { return base.Add(6 * time.Minute) }
-	deleted, err := svc.Cleanup("personal")
+	err = svc.Cleanup("personal")
 	if err != nil {
 		t.Fatalf("Cleanup failed: %v", err)
-	}
-	if deleted < 2 {
-		t.Fatalf("expected at least 2 deleted artifacts, got %d", deleted)
 	}
 
 	expiredPath, err := httpSessionPath(svc.cfg.DataDir, repoHash, expired.SessionID)

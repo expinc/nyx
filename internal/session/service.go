@@ -13,13 +13,13 @@ type Service interface {
 	RevokeCLISession(repoName string) error
 	RevokeHTTPSession(repoName, sessionID, token string) error
 
-	Cleanup(repoName string) (int, error)
+	Cleanup(repoName string) error
 }
 
 // Config configures session service behavior.
 type Config struct {
-	DataDir        string
-	SessionTTL     time.Duration
+	DataDir    string
+	SessionTTL time.Duration
 }
 
 func NewService(cfg Config) Service {

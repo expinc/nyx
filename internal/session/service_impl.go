@@ -203,13 +203,8 @@ func (s *service) RevokeCLISession(repoName string) error {
 		return err
 	}
 
-	removed, rmErr := s.removeIfPresent(path)
-	if rmErr != nil {
-		return rmErr
-	}
-	if !removed {
-		s.purgeSessionArtifacts(repoName, repoNameHash)
-		return nil
+	if err := s.removeIfPresent(path); err != nil {
+		return err
 	}
 
 	s.purgeSessionArtifacts(repoName, repoNameHash)
@@ -254,68 +249,58 @@ func (s *service) RevokeHTTPSession(repoName, sessionID, token string) error {
 		return NewInvalidSessionError("session token mismatch", nil)
 	}
 
-	if _, err := s.removeIfPresent(path); err != nil {
+	if err := s.removeIfPresent(path); err != nil {
 		return err
 	}
 	s.purgeSessionArtifacts(repoName, repoNameHash)
 	return nil
 }
 
-func (s *service) Cleanup(repoName string) (int, error) {
+func (s *service) Cleanup(repoName string) error {
 	if err := s.validateRepoName(repoName); err != nil {
-		return 0, err
+		return err
 	}
 	repoNameHash, err := hashRepoName(repoName)
 	if err != nil {
-		return 0, err
+		return err
 	}
-
-	deleted := 0
 
 	cliPath, err := cliSessionPath(s.cfg.DataDir, repoNameHash)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	if rec, err := readSessionRecord(cliPath); err != nil {
 		if !isSessionNotFound(err) {
-			if removed, rmErr := s.removeIfPresent(cliPath); rmErr != nil {
-				return deleted, rmErr
-			} else if removed {
-				deleted++
+			if rmErr := s.removeIfPresent(cliPath); rmErr != nil {
+				return rmErr
 			}
 		}
 	} else if rec.Mode != ModeCLI || rec.RepoName != repoName || s.isExpired(rec.ExpiresAt) {
-		if removed, rmErr := s.removeIfPresent(cliPath); rmErr != nil {
-			return deleted, rmErr
-		} else if removed {
-			deleted++
+		if rmErr := s.removeIfPresent(cliPath); rmErr != nil {
+			return rmErr
 		}
 	}
 
 	paths, err := listHTTPSessionFiles(s.cfg.DataDir, repoNameHash)
 	if err != nil {
-		return deleted, err
+		return err
 	}
 	for _, path := range paths {
 		rec, readErr := readSessionRecord(path)
 		if readErr != nil {
-			if removed, rmErr := s.removeIfPresent(path); rmErr != nil {
-				return deleted, rmErr
-			} else if removed {
-				deleted++
+			if rmErr := s.removeIfPresent(path); rmErr != nil {
+				return rmErr
 			}
 			continue
 		}
 		if rec.Mode != ModeHTTP || rec.RepoName != repoName || s.isExpired(rec.ExpiresAt) {
-			if removed, rmErr := s.removeIfPresent(path); rmErr != nil {
-				return deleted, rmErr
-			} else if removed {
-				deleted++
+			if rmErr := s.removeIfPresent(path); rmErr != nil {
+				return rmErr
 			}
 		}
 	}
 
-	return deleted, nil
+	return nil
 }
 
 func (s *service) validateRepoName(repoName string) error {
@@ -358,24 +343,25 @@ func (s *service) cleanupIfMalformed(path string, err error) {
 func (s *service) purgeSessionArtifacts(repoName, repoNameHash string) {
 	cliPath, err := cliSessionPath(s.cfg.DataDir, repoNameHash)
 	if err == nil {
-		rec, readErr := readSessionRecord(cliPath)
-		if readErr != nil {
-			s.cleanupIfMalformed(cliPath, readErr)
-		} else if rec.Mode != ModeCLI || rec.RepoName != repoName || s.isExpired(rec.ExpiresAt) {
-			_ = s.bestEffortRemove(cliPath)
-		}
+		s.purgeSessionArtifact(cliPath, repoName, ModeCLI)
 	}
 
 	paths, err := listHTTPSessionFiles(s.cfg.DataDir, repoNameHash)
 	if err == nil {
 		for _, p := range paths {
-			rec, readErr := readSessionRecord(p)
-			if readErr != nil {
-				s.cleanupIfMalformed(p, readErr)
-			} else if rec.Mode != ModeHTTP || rec.RepoName != repoName || s.isExpired(rec.ExpiresAt) {
-				_ = s.bestEffortRemove(p)
-			}
+			s.purgeSessionArtifact(p, repoName, ModeHTTP)
 		}
+	}
+}
+
+func (s *service) purgeSessionArtifact(path, repoName, expectedMode string) {
+	rec, readErr := readSessionRecord(path)
+	if readErr != nil {
+		s.cleanupIfMalformed(path, readErr)
+		return
+	}
+	if rec.Mode != expectedMode || rec.RepoName != repoName || s.isExpired(rec.ExpiresAt) {
+		s.bestEffortRemove(path)
 	}
 }
 
@@ -389,17 +375,17 @@ func (s *service) bestEffortRemove(path string) error {
 	return nil
 }
 
-func (s *service) removeIfPresent(path string) (bool, error) {
+func (s *service) removeIfPresent(path string) error {
 	if path == "" {
-		return false, NewInvalidArgumentError("path is required", nil)
+		return NewInvalidArgumentError("path is required", nil)
 	}
 	if err := os.Remove(path); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return false, nil
+			return nil
 		}
-		return false, NewDeleteFailedError("failed to delete session file", err)
+		return NewDeleteFailedError("failed to delete session file", err)
 	}
-	return true, nil
+	return nil
 }
 
 func isSessionInvalid(err error) bool {
