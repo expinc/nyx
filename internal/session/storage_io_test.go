@@ -3,6 +3,7 @@ package session
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -176,6 +177,37 @@ func TestReadSessionRecordMalformedLeavesArtifact(t *testing.T) {
 	}
 }
 
+func TestReadSessionRecordInvalidMode(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	if err := ensureSessionLayout(dataDir); err != nil {
+		t.Fatalf("ensureSessionLayout failed: %v", err)
+	}
+
+	path, err := cliSessionPath(dataDir, "hashmode")
+	if err != nil {
+		t.Fatalf("cliSessionPath failed: %v", err)
+	}
+
+	now := time.Now().UTC().Truncate(time.Second)
+	rec := Record{
+		Version:   SessionRecordVersion,
+		Mode:      "invalid",
+		RepoName:  "personal",
+		SessionID: "sess_bad_mode",
+		CreatedAt: now,
+		ExpiresAt: now.Add(5 * time.Minute),
+	}
+	if err := writeSessionRecord(path, rec); err != nil {
+		t.Fatalf("writeSessionRecord failed: %v", err)
+	}
+
+	if _, err := readSessionRecord(path); err == nil {
+		t.Fatal("expected readSessionRecord to fail for invalid mode")
+	}
+}
+
 func TestListHTTPSessionFiles(t *testing.T) {
 	t.Parallel()
 
@@ -205,5 +237,66 @@ func TestListHTTPSessionFiles(t *testing.T) {
 	}
 	if filepath.Base(files[0]) != "a"+sessionFileSuffix {
 		t.Fatalf("unexpected file listed: %s", files[0])
+	}
+}
+
+func TestSessionPermissionsPlatformAware(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	if err := ensureSessionLayout(dataDir); err != nil {
+		t.Fatalf("ensureSessionLayout failed: %v", err)
+	}
+
+	repoHash := "permhash"
+	if _, err := ensureHTTPSessionsRepoDir(dataDir, repoHash); err != nil {
+		t.Fatalf("ensureHTTPSessionsRepoDir failed: %v", err)
+	}
+
+	cliPath, err := cliSessionPath(dataDir, repoHash)
+	if err != nil {
+		t.Fatalf("cliSessionPath failed: %v", err)
+	}
+	now := time.Now().UTC().Truncate(time.Second)
+	rec := Record{
+		Version:   SessionRecordVersion,
+		Mode:      ModeCLI,
+		RepoName:  "personal",
+		SessionID: "sess_perm",
+		CreatedAt: now,
+		ExpiresAt: now.Add(5 * time.Minute),
+	}
+	if err := writeSessionRecord(cliPath, rec); err != nil {
+		t.Fatalf("writeSessionRecord failed: %v", err)
+	}
+
+	if runtime.GOOS == "windows" {
+		if _, err := os.Stat(cliPath); err != nil {
+			t.Fatalf("expected session file to exist on windows: %v", err)
+		}
+		return
+	}
+
+	root := filepath.Join(dataDir, sessionRootDirName)
+	cliDir := filepath.Join(root, cliModeDirName)
+	httpDir := filepath.Join(root, httpModeDirName)
+	repoDir := filepath.Join(httpDir, repoHash)
+
+	for _, dir := range []string{root, cliDir, httpDir, repoDir} {
+		info, err := os.Stat(dir)
+		if err != nil {
+			t.Fatalf("expected directory %s to exist: %v", dir, err)
+		}
+		if perm := info.Mode().Perm(); perm != 0o700 {
+			t.Fatalf("unexpected directory permissions for %s: got %o want 700", dir, perm)
+		}
+	}
+
+	info, err := os.Stat(cliPath)
+	if err != nil {
+		t.Fatalf("expected session file to exist: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Fatalf("unexpected session file permissions: got %o want 600", perm)
 	}
 }

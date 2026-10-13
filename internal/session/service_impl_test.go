@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,6 +38,42 @@ func TestServiceCLISessionLifecycle(t *testing.T) {
 		t.Fatal("expected validation failure after revoke")
 	}
 	assertErrorCode(t, err, ErrCodeInvalidSession)
+}
+
+func TestServiceCreateCLISessionReplacesPrevious(t *testing.T) {
+	t.Parallel()
+
+	base := time.Now().UTC().Truncate(time.Second)
+	svc := newTestService(t, Config{DataDir: t.TempDir(), SessionTTL: 5 * time.Minute}, base)
+
+	first, err := svc.CreateCLISession("personal")
+	if err != nil {
+		t.Fatalf("CreateCLISession #1 failed: %v", err)
+	}
+	second, err := svc.CreateCLISession("personal")
+	if err != nil {
+		t.Fatalf("CreateCLISession #2 failed: %v", err)
+	}
+
+	if first.SessionID == second.SessionID {
+		t.Fatalf("expected replacement session to have a new ID, got %q", second.SessionID)
+	}
+
+	repoHash, err := hashRepoName("personal")
+	if err != nil {
+		t.Fatalf("hashRepoName failed: %v", err)
+	}
+	path, err := cliSessionPath(svc.cfg.DataDir, repoHash)
+	if err != nil {
+		t.Fatalf("cliSessionPath failed: %v", err)
+	}
+	rec, err := readSessionRecord(path)
+	if err != nil {
+		t.Fatalf("readSessionRecord failed: %v", err)
+	}
+	if rec.SessionID != second.SessionID {
+		t.Fatalf("expected latest CLI record to be persisted, got %q want %q", rec.SessionID, second.SessionID)
+	}
 }
 
 func TestServiceHTTPSessionScopedRevoke(t *testing.T) {
@@ -271,6 +308,39 @@ func TestServiceCreateHTTPSessionPurgesExpiredRecords(t *testing.T) {
 
 	if _, err := os.Stat(oldPath); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected expired session artifact to be purged on create, stat err=%v", err)
+	}
+}
+
+func TestServiceCreateHTTPSessionDoesNotPersistRawToken(t *testing.T) {
+	t.Parallel()
+
+	svc := newTestService(t, Config{DataDir: t.TempDir(), SessionTTL: 5 * time.Minute}, time.Now().UTC())
+
+	created, err := svc.CreateHTTPSession("personal")
+	if err != nil {
+		t.Fatalf("CreateHTTPSession failed: %v", err)
+	}
+
+	repoHash, err := hashRepoName("personal")
+	if err != nil {
+		t.Fatalf("hashRepoName failed: %v", err)
+	}
+	path, err := httpSessionPath(svc.cfg.DataDir, repoHash, created.SessionID)
+	if err != nil {
+		t.Fatalf("httpSessionPath failed: %v", err)
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read persisted session file: %v", err)
+	}
+	content := string(data)
+
+	if strings.Contains(content, created.Token) {
+		t.Fatal("persisted session file must not contain raw token")
+	}
+	if !strings.Contains(content, tokenHashPrefix) {
+		t.Fatalf("persisted session file must contain token hash prefix %q", tokenHashPrefix)
 	}
 }
 

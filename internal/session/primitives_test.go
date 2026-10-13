@@ -57,6 +57,23 @@ func TestGenerateSessionID_Format(t *testing.T) {
 	}
 }
 
+func TestGenerateSessionID_UniquenessSanity(t *testing.T) {
+	t.Parallel()
+
+	a, err := generateSessionID()
+	if err != nil {
+		t.Fatalf("generateSessionID returned error: %v", err)
+	}
+	b, err := generateSessionID()
+	if err != nil {
+		t.Fatalf("generateSessionID returned error on second call: %v", err)
+	}
+
+	if a == b {
+		t.Fatalf("expected distinct session IDs across calls, got %q", a)
+	}
+}
+
 func TestGenerateSessionToken_Format(t *testing.T) {
 	t.Parallel()
 
@@ -70,6 +87,23 @@ func TestGenerateSessionToken_Format(t *testing.T) {
 	}
 	if len(token) <= len(sessionTokenPrefix) {
 		t.Fatalf("expected non-empty random segment")
+	}
+}
+
+func TestGenerateSessionToken_UniquenessSanity(t *testing.T) {
+	t.Parallel()
+
+	a, err := generateSessionToken()
+	if err != nil {
+		t.Fatalf("generateSessionToken returned error: %v", err)
+	}
+	b, err := generateSessionToken()
+	if err != nil {
+		t.Fatalf("generateSessionToken returned error on second call: %v", err)
+	}
+
+	if a == b {
+		t.Fatalf("expected distinct session tokens across calls, got %q", a)
 	}
 }
 func TestHashTokenAndMatch(t *testing.T) {
